@@ -1,4 +1,4 @@
-name = SHANTI Google Drive Access Module
+name = Google Drive Access Module
 description = "Module for accessing Google Drive files from a Drupal site created by SHANTI@UVa"
 package = Shanti
 core = 7.x
