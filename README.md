@@ -51,7 +51,8 @@ Go there and enter the Client ID and the Client Secret Code from the Google regi
 
 The module uses Googles OAuth 2 authentication as described in https://developers.google.com/accounts/docs/OAuth2WebServer It does so through the PHP client api library. New users are shown a warning saying that they have not allowed this site to access their Google Drive account with a link to do so. The link goes to a page: {your site}/gdrive/auth which shows a page requesting permission to access their Google Drive account. If they click the Yes button, they are taken *one time* to Googles Authentication page, where they can then grant permission. The module then stores the resulting token and can read the user's Google Drive account. A message is shown on the user's profile page saying they have given permission to the site to access their Google Drive account and a link to revoke such access if they so choose.
 
-This modules is primarily meant to be an intermediary or helper module for other modules that want to work with Google Drive spreadsheets. Thus, it provides only one "page" {your site}/gdrive/spreadsheets that shows a list of all the users spreadsheets.
+## How To Use This Module
+This module is primarily meant to be an intermediary or helper module for other modules that want to work with Google Drive spreadsheets. Thus, it provides only one "page" {your site}/gdrive/spreadsheets that shows a list of all the users spreadsheets.
 
 The primary use for this module if for other modules to access a user's spreadsheets through the gdrive_get_filelist() function. This function returns an array of all the user's spreadsheets. Each spreadsheet is represented with a named array with the following fields:
 
