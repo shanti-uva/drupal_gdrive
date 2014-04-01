@@ -1,7 +1,7 @@
 drupal_gdrive
 =============
 
-A drupal module for authenticating and interfacing with a user's Google Drive account.
+A drupal module for authenticating and interfacing with a user's Google Drive account. It presently only gives access to a users spreadsheets on their Google Drive account.
 
 # Requirements
 
@@ -37,7 +37,32 @@ git clone https://github.com/shanti-uva/drupal_gdrive.git gdrive
 
 This will clone the module into a gdrive folder in your Drupal site's module folder.
 
-Next, go to your site as administrator and enable the Gdrive module
+Next, go to your site as administrator and enable the Gdrive module which will be listed under a project called SHANTI.
+
+Once enabled you will see a warning saying:
+
+> Make sure the Google Project authentication credentials are properly entered in the configuration page for this module.
+
+The link will take you to the configuration page at {your site}/admin/config/services/gdrive
+
+Go there and enter the Client ID and the Client Secret Code from the Google registration page mentioned above. The third text box is for an option url on your site where you want users redirected upon login.
+
+## How It Works
+
+The module uses Googles OAuth 2 authentication as described in https://developers.google.com/accounts/docs/OAuth2WebServer It does so through the PHP client api library. New users are shown a warning saying that they have not allowed this site to access their Google Drive account with a link to do so. The link goes to a page: {your site}/gdrive/auth which shows a page requesting permission to access their Google Drive account. If they click the Yes button, they are taken *one time* to Googles Authentication page, where they can then grant permission. The module then stores the resulting token and can read the user's Google Drive account. A message is shown on the user's profile page saying they have given permission to the site to access their Google Drive account and a link to revoke such access if they so choose.
+
+This modules is primarily meant to be an intermediary or helper module for other modules that want to work with Google Drive spreadsheets. Thus, it provides only one "page" {your site}/gdrive/spreadsheets that shows a list of all the users spreadsheets.
+
+The primary use for this module if for other modules to access a user's spreadsheets through the gdrive_get_filelist() function. This function returns an array of all the user's spreadsheets. Each spreadsheet is represented with a named array with the following fields:
+
+* gid: The Google ID for the file
+* title: The title of the file
+* url: the URL of the file
+* created: The date the file was created
+* owners: A string of owners names separated by dollar signs, e.g. owner1$owner2$owner3
+* shared: A boolean whether the file is shared or not
+
+Developers can then use this information within their own modules as desired.
 
 
 
