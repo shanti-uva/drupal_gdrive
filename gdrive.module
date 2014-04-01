@@ -1,0 +1,349 @@
+<?php
+
+/**
+ * @file
+ *  Module that allows a Shanti site to access a user's Google Drive with their permission
+ */
+
+
+define('GAUTH_APP_NAME', 'Drupal Google Drive Module'); 
+
+ /**
+  * 
+  dpm(get_include_path());
+  $lib = libraries_load('google-api-php-client');
+  dpm($lib);
+  */
+function gdrive_init() {
+  $glibpath = libraries_get_path('google-api-php-client');
+  set_include_path(DRUPAL_ROOT . '/' . $glibpath . "/src/" . PATH_SEPARATOR . get_include_path());
+  libraries_load('google-api-php-client');
+  module_load_include('inc', 'gdrive', 'gdrive');
+}
+
+function gdrive_menu() {
+  // URL for testing access
+  $items['gdrive/auth'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gdrive_auth_page'),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  // URL for testing access
+  $items['gdrive/files'] = array(
+    'page callback' => 'gdrive_show',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['gdrive/response'] = array(
+    'title' => 'Google Drive Authentication',
+    'description' => 'Redirect after google authentication request',
+    'page callback' => 'gdrive_register',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  // Admin URL for setting up Google Drive Authorization
+  $items['admin/config/services/gdrive'] = array(
+    'title' => 'Google Authentication Settings',
+    'description' => 'Configuration for Google Authentication',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gdrive_admin_settings'),
+    'access arguments' => array('access gdrive settings'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+
+/**
+* Implements hook_permission().
+*/
+function gdrive_permission() {
+  return array(
+    'access gdrive settings' => array(
+      'title' => t('Set Google API Authorization Info for Site'),
+    ),
+  ); 
+}
+
+
+/**
+ * Creates the admin settings form for Shanti Google Drive module
+ *    called by shivanode_menu for path: 'admin/config/content/shivanode'
+ */
+function gdrive_admin_settings($form, &$form_state) {
+  
+  $form['gdrive_settings_header'] = array(
+    '#markup' => t('<h3>Google Doc Authentication Settings</h3>') .
+      t('<p>Go to <a href="@link">@link</a> and create a Google project for your site. Under the APIs & auth\APIs section, enable the Drive API (not SDK). Next, under the APIs & auth\Credentials section, create a new client ID for a web application. Finally, enter the new Google Client ID information in the form below.</p>', array('@link' => 'https://console.developers.google.com/project')),
+  );
+  
+  $form['gdrive_settings_clientid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter the Client ID'),
+    '#size' => 80,
+    '#default_value' => variable_get('gdrive_settings_clientid', ''),
+    '#required' => TRUE,
+  );  
+  
+  $form['gdrive_settings_clientsecret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Enter the Client secret code'),
+    '#size' => 80,
+    '#default_value' => variable_get('gdrive_settings_clientsecret', ''),
+    '#required' => TRUE,
+  );
+  
+  $form['gdrive_settings_redirecturi'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Redirect URL'),
+    '#description' => t('The URL to which the user will be directed upon login. (Defaults to the home page.)'),
+    '#size' => 80,
+    '#default_value' => variable_get('gdrive_settings_redirecturi', ''),
+  );
+   
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function gdrive_libraries_info() {
+  $libraries['google-api-php-client'] = array(
+    'title' => 'Google OAuth2 Library',
+    'vendor url' => 'https://developers.google.com/api-client-library/php/',
+    'download url' => 'https://github.com/google/google-api-php-client',
+    'path' => 'src/',
+    'pre-load' => array('shanti_dgocs_update_inc_path'),
+    'version arguments' => array(
+      'file' => 'src/Google/Client.php',
+      'pattern' => '/const LIBVER = "([^"]+)";/',
+      'lines' => 45,
+    ),
+    'versions' => array(
+      'google-api-php-client/1.0.5-beta' => array(),
+    ),
+    'files' => array(
+      'php' => array(
+        'Google/Client.php',
+        'Google/Service.php',
+        'Google/Service/Drive.php',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Returns a named array of Google API project info from administration settings
+ */
+function gdrive_get_google_auth_settings() {
+  if(variable_get('gdrive_settings_clientid', '') == '') { return FALSE; }
+  $info = array(
+    'client' => variable_get('gdrive_settings_clientid', ''),
+    'secret' => variable_get('gdrive_settings_clientsecret', ''),
+    'redirect' => 'gdrive/response',
+  );
+  return $info;
+}
+
+/**
+ * Implements hook_user_login
+ */
+function gdrive_user_login(&$edit, $account) {
+  $uid = $account->uid;
+  $hasCreds = gdrive_get_stored_credentials($uid);
+  if(!$hasCreds ) {
+    drupal_set_message(t('You have not authorized access to your Google Drive account which is needed to create certain kinds of content such as visualizations. Please go <a href="@authlink">here</a> to authorize read-only access to your Google Drive account or hide this message.', array('@authlink' => url('gdrive/auth'))), 'warning');
+  } else {
+    $creds = json_decode($hasCreds);
+    if(isset($creds->revoked) && $creds->revoked == TRUE) {
+      return;
+    }
+    $url = gdrive_get_auth_url(gdrive_get_state());
+    if(!isset($creds->refresh_token)) {
+      $url = str_replace('approval_prompt=auto', 'approval_prompt=force', $url);
+    }
+    $_GET['destination'] = $url;
+    drupal_goto($url, array('external' => TRUE, 'absolute' => TRUE));
+ 
+    /*
+    else if($creds->created + $creds->expires_in < time()) {
+      return;
+      dpm($creds->created . ':' . $creds->expires_in . ':' . time(), 'expired times');
+      try { 
+        $token = gdrive_refresh_token($creds);
+        $creds->access_token = $token->access_token;
+        $creds->expires_in = $token->expires_in;
+        $creds->created = $token->created;
+        $credentials = json_encode($creds);
+        gdrive_store_credentials($uid, $credentials);
+      } catch (Google_Auth_Exception $e) {
+        dpm($creds);
+        dpm((array)$e, 'exception');
+      }
+    } */
+  }
+}
+
+/**
+ * Implements hook_page_alter. Adds message to user's profile to tell whether they have authorized access to their Google Drive account.
+ */
+function gdrive_page_alter(&$page) {
+  // alters the user's profile page putting message that authorization has either been approved or disapproved.
+  global $user;
+  if(isset($page['content']['system_main']['#entity_type'])) {
+    if ($page['content']['system_main']['#entity_type'] == 'user') {
+      if(isset($page['content']['system_main']['#account']) && $user->uid == $page['content']['system_main']['#account']->uid) {
+        $creds = gdrive_get_stored_credentials($user->uid);
+        $creds = json_decode($creds);
+        $msg = t('<p>You have authorized this site to read your Google Drive account. (<a href="@revokelink">Revoke authorization</a>)', array('@revokelink'=> url('gdrive/auth/revoke')));
+        if($creds) {
+          if(isset($creds->revoked) && $creds->revoked == TRUE) {
+            $msg = t('<p>You have denied this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
+          }
+        } else {
+          $msg = t('<p>You have not yet given this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
+        }
+        $markup = array(
+              '#markup' => $msg, 
+              '#weight' => 40,
+          );
+        $page['content']['system_main']['gdrive_auth'] = $markup;
+      }
+    }
+  }
+}
+
+/**
+ * Scopes available to the API. Right now just drive and user info
+ */
+function gdrive_get_scopes() {
+  $scopes = array(
+    'https://www.googleapis.com/auth/drive.readonly',
+  );
+  return $scopes;
+}
+
+/**
+ * Returns a string to use for the state parameter for the Google Client.
+ */
+function gdrive_get_state() {
+  return 'login';
+}
+
+/**
+ * Authorization page for accessing user's Google Drive account. Used also for revoking or reinstating accesss.
+ */
+function gdrive_auth_page($form, &$form_state) {
+  global $user;
+  $args = arg();
+  $revoke = (isset($args[2]) && $args[2] == 'revoke') ? TRUE : FALSE;
+  $stored_credentials = gdrive_get_stored_credentials($user->uid);
+  $credobj = ($stored_credentials) ? json_decode($stored_credentials) : FALSE;
+  if($stored_credentials && !$revoke && (!isset($credobj->revoked) || $credobj->revoked != TRUE) ) {
+    drupal_set_message(t('You have already authorized this site to read your Google Drive account. If you with to revoke the authorization, go to your <a href="@userurl">profile page</a>.', array('@userurl' => url('user'))));
+    drupal_goto();
+  }
+  $form = array(
+    'header' => array(
+      '#markup' => t('<h1>Authorize This Site to Read Your Google Drive Account</h1>'),
+    ),
+    'p2' => array(
+      '#markup' => '',
+    ), 
+    'p1' => array(
+      '#markup' => t('<p>This site needs read-only access to your Google Drive account so that you can use your Google Drive documents to create visualizations, and so forth. Will you authorize this site to read your Google Drive account?</p>'),
+    ),
+    'yes' => array(
+      '#type' => 'button',
+      '#value' => t('Yes'),
+    ), 
+    'no' => array(
+      '#type' => 'button',
+      '#value' => t('No'),
+    ),
+    'referrer' => array(
+      '#type' => 'hidden',
+      '#value' => $_SERVER['HTTP_REFERER'],
+    )
+  );
+  if($stored_credentials && $revoke) {
+    $form['p2']['#markup'] = t('<p class="gdrive-message"><b>Note:</b> You previously authorized this site to read your Google Drive account. If you wish to revoke this authorization, press the "No" button.</p>');
+  } else if ($stored_credentials && $credobj->revoked == TRUE) {
+    $form['p2']['#markup'] = t('<p class="gdrive-message"><b>Note:</b> You previously denied this site read access your Google Drive account. If you wish to grant authorization, press the "Yes" button.</p>');
+  }
+  return $form;
+}
+
+/**
+ * Validation for gdrive_auth_page interprets whether "Yes" or "No" has been chosen and response appropriately.
+ */
+function gdrive_auth_page_validate($form, &$form_state) {
+  global $user;
+  $response = $form_state['triggering_element']['#value'];
+  if($response == t('Yes')) {
+    $state = gdrive_get_state();
+    $authurl = gdrive_get_auth_url($state);
+    $authurl = str_replace('approval_prompt=auto', 'approval_prompt=force', $authurl);
+    drupal_goto($authurl, array('external' => TRUE));
+  } else {
+    $uid = $user->uid;
+    gdrive_revoke_auth($uid);
+    $credentials = gdrive_get_stored_credentials($uid);
+    if($credentials) {
+      $creds = json_decode($credentials);
+      $creds->revoked = TRUE;
+      $credentials = json_encode($creds);
+    } else {
+      $credentials = '{"revoked":true}';
+    }
+    gdrive_store_credentials($uid, $credentials); 
+    drupal_goto($form_state['input']['referrer']);
+  }
+  
+}
+
+function gdrive_register() {
+  global $user;
+  $pq = drupal_parse_url($_SERVER['REQUEST_URI']);
+  $gcode = $pq['query']['code'];
+  $state = $pq['query']['state'];
+  $credentials = gdrive_get_credentials($gcode, $state);
+  gdrive_store_credentials($user->uid, $credentials);
+  $gauthredirect = variable_get('gdrive_settings_redirecturi', '');
+  drupal_goto($gauthredirect);
+}
+
+function gdrive_show() {
+  global $user; 
+  drupal_set_title(t('Google Drive Spreadsheets'));
+  $markup = array(
+    'p' => array(
+      '#markup' => t('<p>Below is a list of all the spreadsheets of data in your Google Drive account. Clicking on the spreadsheet title will open a new window with that spreadsheet in it. Those titles with an asterisk (*) next to them are not shared and so cannot be used for public visualizations and the like.</p>')
+    ),
+  );
+  $stored_credentials = gdrive_get_stored_credentials($user->uid);
+  
+  $files = gdrive_get_filelist();
+  if($files) { 
+    $list = '<ul>';
+    foreach($files as $file) {
+      $html = '<li><a href="' . $file['url'] . '" target="_blank">' . $file['title'];
+      if(!$file['shared']) {
+        $html .= '<a href="' . $file['url'] . '" title="This spreadsheet is not shared with the public. Click on the asterisk to go to the spreadsheet and share with the option Allow Anyone on the Web access." target="_blank">*</a>';
+      }
+      $html .= '</a></li>';
+      $list .= $html;
+    }
+    $list .= '</ul>';
+    $markup['list'] = array('#markup' => $list);
+  } else {
+    $markup['denied'] = array('#markup' => t('<p>You have denied this site access to your Google Drive account. Please go to <a href="@upage">your user page</a> to change this setting.</p>', array('@upage' => '/user')));
+  }
+  return drupal_render($markup);
+}

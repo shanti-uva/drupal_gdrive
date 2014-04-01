@@ -1,0 +1,14 @@
+name = SHANTI Google Drive Access Module
+description = "Module for accessing Google Drive files from a Drupal site created by SHANTI@UVa"
+package = Shanti
+core = 7.x
+
+files[] = gdrive.module
+files[] = gdrive.inc
+
+dependencies[] = libraries
+
+version = "7.x-0.1-alpha1"
+core = "7.x"
+project = "SHANTI"
+

@@ -1,0 +1,64 @@
+<?php
+/**
+ * @file
+ * Install and uninstall functions for the Shanti@UVa Google Docs module.
+ */
+ 
+/**
+ * Implements hook_schema
+ */
+function gdrive_schema() {
+  $schema['gdrive_auth'] = array(
+    // Example (partial) specification for table "node".
+    'description' => 'The table for Shanti@UVa Google Drive module authentication.',
+    'fields' => array(
+      'gdriveauthid' => array(
+        'description' => 'The primary id for the table',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'The user id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'credentials' => array(
+        'description' => 'The JSON string representing Google credentials',
+        'type' => 'varchar',
+        'length' => 1024,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'indexes' => array(
+      'record' => array('gdriveauthid'),
+      'user' => array('uid'),
+    ),
+    'unique keys' => array(
+      'uid' => array('uid'),
+    ),
+    'primary key' => array('gdriveauthid'),
+  );
+  return $schema;
+}
+
+
+/**
+ * Implements hook_install().
+ */
+function gdrive_install() {
+  $role = user_role_load_by_name("administrator");
+  if($role) {
+    user_role_change_permissions($role->rid, array('access gdrive settings' => TRUE));
+  } 
+  drupal_set_message(t('Make sure the Google Project authentication credentials are properly entered in the <a href="@settingsurl">configuration page</a> for this module.', array('@settingsurl' => '/admin/config/services/gdrive')), 'warning');
+}
+
+function gdrive_uninstall() {
+  variable_del('gdrive_settings_clientid');
+  variable_del('gdrive_settings_clientsecret');
+  variable_del('gdrive_settings_redirecturi');
+}
