@@ -30,8 +30,16 @@ function gdrive_menu() {
     'type' => MENU_LOCAL_TASK,
   );
   
+  // Replace current authorization with new account
+  $items['gdrive/reauth'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gdrive_auth_new_account'),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  
   // URL for testing access
-  $items['gdrive/files'] = array(
+  $items['gdrive/spreadsheets'] = array(
     'page callback' => 'gdrive_show',
     'access callback' => 'user_is_logged_in',
     'type' => MENU_LOCAL_TASK,
@@ -170,23 +178,6 @@ function gdrive_user_login(&$edit, $account) {
     }
     $_GET['destination'] = $url;
     drupal_goto($url, array('external' => TRUE, 'absolute' => TRUE));
- 
-    /*
-    else if($creds->created + $creds->expires_in < time()) {
-      return;
-      dpm($creds->created . ':' . $creds->expires_in . ':' . time(), 'expired times');
-      try { 
-        $token = gdrive_refresh_token($creds);
-        $creds->access_token = $token->access_token;
-        $creds->expires_in = $token->expires_in;
-        $creds->created = $token->created;
-        $credentials = json_encode($creds);
-        gdrive_store_credentials($uid, $credentials);
-      } catch (Google_Auth_Exception $e) {
-        dpm($creds);
-        dpm((array)$e, 'exception');
-      }
-    } */
   }
 }
 
@@ -308,6 +299,20 @@ function gdrive_auth_page_validate($form, &$form_state) {
   
 }
 
+function gdrive_auth_new_account() {
+  global $user;
+  $result = db_delete('gdrive_auth')
+    ->condition('uid', $user->uid)
+    ->execute();
+  if($result == 0) {
+    drupal_set_message(t('No previous authorization found.'));
+  }
+  $state = gdrive_get_state();
+  $authurl = gdrive_get_auth_url($state);
+  $authurl = str_replace('approval_prompt=auto', 'approval_prompt=force', $authurl);
+  drupal_goto($authurl, array('external' => TRUE));
+}
+
 function gdrive_register() {
   global $user;
   $pq = drupal_parse_url($_SERVER['REQUEST_URI']);
@@ -326,6 +331,9 @@ function gdrive_show() {
     'p' => array(
       '#markup' => t('<p>Below is a list of all the spreadsheets of data in your Google Drive account. Clicking on the spreadsheet title will open a new window with that spreadsheet in it. Those titles with an asterisk (*) next to them are not shared and so cannot be used for public visualizations and the like.</p>')
     ),
+    'p2' => array(
+      '#markup' => t('<p>If you have previously authorized a different Google Drive account and want to switch to the current one, please <a href="@reauthlink">click here</a>.</p>', array('@reauthlink' => url('gdrive/reauth')))
+    )
   );
   $stored_credentials = gdrive_get_stored_credentials($user->uid);
   

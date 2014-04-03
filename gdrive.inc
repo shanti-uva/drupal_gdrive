@@ -86,7 +86,6 @@ function gdrive_get_stored_credentials($uid) {
 }
 
 function gdrive_refresh_token($creds) {
-  dpm($creds, 'creds in refresh token');
   $client = gdrive_get_client();
   $client->setAccessToken(json_encode($creds));
   $client->refreshToken($creds->refresh_token);
@@ -159,14 +158,6 @@ function gdrive_get_auth_url($state) {
   global $base_url;
   $client = gdrive_get_client($state);
   return $client->createAuthUrl();
-  /*
-  $tmpUrl = parse_url($client->createAuthUrl());
-  $query = explode('&', $tmpUrl['query']);
-  $query[] = 'user_id=' . urlencode($emailAddress);
-  return
-      $tmpUrl['scheme'] . '://' . $tmpUrl['host'] . $tmpUrl['port'] .
-      $tmpUrl['path'] . '?' . implode('&', $query);
-   * */
 }
 
 /**
@@ -220,8 +211,8 @@ function gdrive_get_filelist($sorted='title') {
   global $user;
   $client = gdrive_get_client();
   $creds = gdrive_get_stored_credentials($user->uid);
-  $credobj = json_decode($creds);
-  if(!isset($credobj->revoked) || $credobj->revoked != TRUE) {
+  $credobj = ($creds) ? json_decode($creds) : FALSE;
+  if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
     $client->setAccessToken($creds);
     $driveService = new Google_Service_Drive($client);
     $files = $driveService->files->listFiles(array(
@@ -248,6 +239,45 @@ function gdrive_get_filelist($sorted='title') {
       array_multisort($titles, SORT_ASC, $newfiles);
     }
     return $newfiles;
+  } else {
+    return FALSE;
+  }
+}
+
+function gdrive_get_file($gid) {
+  // Returns a files resource: https://developers.google.com/drive/v2/reference/files#resource
+  global $user;
+  $client = gdrive_get_client();
+  $creds = gdrive_get_stored_credentials($user->uid);
+  $credobj = ($creds) ? json_decode($creds) : FALSE;
+  if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
+    $client->setAccessToken($creds);
+    $driveService = new Google_Service_Drive($client);
+    if(strpos($gid, '?key=') > -1) {
+      $pts = explode('?key=', $gid);
+      if(isset($pts[1])) {
+        $gid = $pts[1];
+        if(preg_match('/([^\&\#]+)[\&\#]/', $gid, $matches)) {
+          $gid = $matches[1];
+        }
+      }
+    }
+    try { 
+      $file = $driveService->files->get($gid);
+      return $file;
+    } catch (Google_Service_Exception $gse) {
+      return FALSE;
+    }
+  }
+}
+
+function gdrive_is_authorized() {
+  global $user;
+  $client = gdrive_get_client();
+  $creds = gdrive_get_stored_credentials($user->uid);
+  $credobj = ($creds) ? json_decode($creds) : FALSE;
+  if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
+    return TRUE;
   } else {
     return FALSE;
   }

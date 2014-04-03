@@ -45,11 +45,11 @@ Once enabled you will see a warning saying:
 
 The link will take you to the configuration page at {your site}/admin/config/services/gdrive
 
-Go there and enter the Client ID and the Client Secret Code from the Google registration page mentioned above. The third text box is for an option url on your site where you want users redirected upon login.
+Go there and enter the Client ID and the Client Secret Code from the Google registration page mentioned above. The third text box is for an option url on your site where you want users redirected upon login. If you enter "gdrive/spreadsheets", it will take the user to a list of their spreadsheets upon login.
 
 ## How It Works
 
-The module uses Googles OAuth 2 authentication as described in https://developers.google.com/accounts/docs/OAuth2WebServer It does so through the PHP client api library. New users are shown a warning saying that they have not allowed this site to access their Google Drive account with a link to do so. The link goes to a page: {your site}/gdrive/auth which shows a page requesting permission to access their Google Drive account. If they click the Yes button, they are taken *one time* to Googles Authentication page, where they can then grant permission. The module then stores the resulting token and can read the user's Google Drive account. A message is shown on the user's profile page saying they have given permission to the site to access their Google Drive account and a link to revoke such access if they so choose.
+The module uses Googles OAuth 2 authentication as described in https://developers.google.com/accounts/docs/OAuth2WebServer It does so through the PHP client api library. New users are shown a warning saying that they have not allowed this site to access their Google Drive account with a link to do so. The link goes to a page: {your site}/gdrive/auth which shows a page requesting permission to access their Google Drive account. If they click the Yes button, they are taken *one time* to Googles Authentication page, where they can then grant permission. The module then stores the resulting token and can read the user's Google Drive account at any time. The user will never again be asked for authorization unless access is revoked by the user. A message is shown on the user's profile page saying they have given permission to the site to access their Google Drive account and a link to revoke such access if they so choose.
 
 ## How To Use This Module
 This module is primarily meant to be an intermediary or helper module for other modules that want to work with Google Drive spreadsheets. Thus, it provides only one "page" {your site}/gdrive/spreadsheets that shows a list of all the users spreadsheets.
@@ -64,6 +64,10 @@ The primary use for this module if for other modules to access a user's spreadsh
 * shared: A boolean whether the file is shared or not
 
 Developers can then use this information within their own modules as desired.
+
+There is also a function, gdrive_is_authorized(), that returns a boolean whether or not the user has authorized access to their Google Drive account.
+
+If user is logged into one Google Drive account and wants to access a different one, the urls {your site}/gdrive/reauth does so.
 
 
 
