@@ -55,8 +55,8 @@ function gdrive_menu() {
   
   // Admin URL for setting up Google Drive Authorization
   $items['admin/config/services/gdrive'] = array(
-    'title' => 'Google Authentication Settings',
-    'description' => 'Configuration for Google Authentication',
+    'title' => 'Google Drive Authentication Settings',
+    'description' => 'Configuration for Google Drive Authentication',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('gdrive_admin_settings'),
     'access arguments' => array('access gdrive settings'),
@@ -73,7 +73,7 @@ function gdrive_menu() {
 function gdrive_permission() {
   return array(
     'access gdrive settings' => array(
-      'title' => t('Set Google API Authorization Info for Site'),
+      'title' => t('Set Google Drive API Authorization for Site'),
     ),
   ); 
 }
@@ -86,7 +86,7 @@ function gdrive_permission() {
 function gdrive_admin_settings($form, &$form_state) {
   
   $form['gdrive_settings_header'] = array(
-    '#markup' => t('<h3>Google Doc Authentication Settings</h3>') .
+    '#markup' => t('<h3>Google Drive Authentication Settings</h3>') .
       t('<p>Go to <a href="@link">@link</a> and create a Google project for your site. Under the APIs & auth\APIs section, enable the Drive API (not SDK). Next, under the APIs & auth\Credentials section, create a new client ID for a web application. Finally, enter the new Google Client ID information in the form below.</p>', array('@link' => 'https://console.developers.google.com/project')),
   );
   
