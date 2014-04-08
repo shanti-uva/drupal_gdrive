@@ -16,8 +16,10 @@ define('GAUTH_APP_NAME', 'Drupal Google Drive Module');
   */
 function gdrive_init() {
   $glibpath = libraries_get_path('google-api-php-client');
-  set_include_path(DRUPAL_ROOT . '/' . $glibpath . "/src/" . PATH_SEPARATOR . get_include_path());
-  libraries_load('google-api-php-client');
+  if($glibpath) { 
+    set_include_path(DRUPAL_ROOT . '/' . $glibpath . "/src/" . PATH_SEPARATOR . get_include_path());
+    libraries_load('google-api-php-client');
+  } 
   module_load_include('inc', 'gdrive', 'gdrive');
 }
 
@@ -84,7 +86,10 @@ function gdrive_permission() {
  *    called by shivanode_menu for path: 'admin/config/content/shivanode'
  */
 function gdrive_admin_settings($form, &$form_state) {
-  
+  $glibpath = libraries_get_path('google-api-php-client');
+  if(!$glibpath) {
+    drupal_set_message(t('You have not properly installed the Google Api PHP Client. It should be in the /sites/all/libraries directory. See the <a href="@rmlink" target="_blank">Read Me file</a> for the gdrive module for more information.', array('@rmlink' => url(drupal_get_path('module','gdrive') . '/README.md'))), 'warning');
+  }
   $form['gdrive_settings_header'] = array(
     '#markup' => t('<h3>Google Drive Authentication Settings</h3>') .
       t('<p>Go to <a href="@link">@link</a> and create a Google project for your site. Under the APIs & auth\APIs section, enable the Drive API (not SDK). Next, under the APIs & auth\Credentials section, create a new client ID for a web application. Finally, enter the new Google Client ID information in the form below.</p>', array('@link' => 'https://console.developers.google.com/project')),
