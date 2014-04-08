@@ -57,6 +57,13 @@ function gdrive_install() {
   drupal_set_message(t('Make sure the Google Project authentication credentials are properly entered in the <a href="@settingsurl">configuration page</a> for this module.', array('@settingsurl' => '/admin/config/services/gdrive')), 'warning');
 }
 
+function gdrive_enable() {
+  $glibpath = libraries_get_path('google-api-php-client');
+  if(!$glibpath) {
+    drupal_set_message(t('You have not properly installed the Google Api PHP Client. It should be in the /sites/all/libraries directory. See the <a href="@rmlink" target="_blank">Read Me file</a> for the gdrive module for more information.', array('@rmlink' => url(drupal_get_path('module','gdrive') . '/README.md'))));
+  }
+}
+
 function gdrive_uninstall() {
   variable_del('gdrive_settings_clientid');
   variable_del('gdrive_settings_clientsecret');

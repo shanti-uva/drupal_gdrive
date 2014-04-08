@@ -126,7 +126,6 @@ function gdrive_libraries_info() {
     'vendor url' => 'https://developers.google.com/api-client-library/php/',
     'download url' => 'https://github.com/google/google-api-php-client',
     'path' => 'src/',
-    'pre-load' => array('shanti_dgocs_update_inc_path'),
     'version arguments' => array(
       'file' => 'src/Google/Client.php',
       'pattern' => '/const LIBVER = "([^"]+)";/',
