@@ -61,6 +61,8 @@ function gdrive_enable() {
   $glibpath = libraries_get_path('google-api-php-client');
   if(!$glibpath) {
     drupal_set_message(t('You have not properly installed the Google Api PHP Client. It should be in the /sites/all/libraries directory. See the <a href="@rmlink" target="_blank">Read Me file</a> for the gdrive module for more information.', array('@rmlink' => url(drupal_get_path('module','gdrive') . '/README.md'))), 'warning');
+  } else {
+    drupal_set_message(t('The Google Api PHP Client is properly installed.'));
   }
 }
 
