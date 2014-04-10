@@ -239,9 +239,10 @@ function gdrive_auth_page($form, &$form_state) {
     drupal_set_message(t('You have already authorized this site to read your Google Drive account. If you with to revoke the authorization, go to your <a href="@userurl">profile page</a>.', array('@userurl' => url('user'))));
     drupal_goto();
   }
+  drupal_set_title(t('Authorize Google Drive Access'));
   $form = array(
     'header' => array(
-      '#markup' => t('<h1>Authorize This Site to Read Your Google Drive Account</h1>'),
+      '#markup' => t('<h3>Authorize This Site to Read Your Google Drive Account</h3>'),
     ),
     'p2' => array(
       '#markup' => '',
