@@ -8,12 +8,9 @@
 
 define('GAUTH_APP_NAME', 'Drupal Google Drive Module'); 
 
- /**
-  * 
-  dpm(get_include_path());
-  $lib = libraries_load('google-api-php-client');
-  dpm($lib);
-  */
+/**
+ * Implements hook_init: sets include path for google api library and includes the .inc folder
+ */
 function gdrive_init() {
   $glibpath = libraries_get_path('google-api-php-client');
   if($glibpath) { 
@@ -23,8 +20,11 @@ function gdrive_init() {
   module_load_include('inc', 'gdrive', 'gdrive');
 }
 
+/**
+ * Implements hook_menu
+ */
 function gdrive_menu() {
-  // URL for testing access
+  // URL for testing access. Shows the authorize page where user can grant or deny authorization to view Google spreadsheets
   $items['gdrive/auth'] = array(
     'page callback' => 'drupal_get_form',
     'page arguments' => array('gdrive_auth_page'),
@@ -40,13 +40,14 @@ function gdrive_menu() {
     'type' => MENU_LOCAL_TASK,
   );
   
-  // URL for testing access
+  // URL for testing access. Shows list os spreadsheets in user's authorized account.
   $items['gdrive/spreadsheets'] = array(
     'page callback' => 'gdrive_show',
     'access callback' => 'user_is_logged_in',
     'type' => MENU_LOCAL_TASK,
   );
   
+  // Path to which Google returns user after authorization. Exchanges code for token and calls function to save token.
   $items['gdrive/response'] = array(
     'title' => 'Google Drive Authentication',
     'description' => 'Redirect after google authentication request',
@@ -82,7 +83,7 @@ function gdrive_permission() {
 
 
 /**
- * Creates the admin settings form for Shanti Google Drive module
+ *  Creates the admin settings form for Shanti Google Drive module
  *    called by shivanode_menu for path: 'admin/config/content/shivanode'
  */
 function gdrive_admin_settings($form, &$form_state) {
@@ -110,20 +111,20 @@ function gdrive_admin_settings($form, &$form_state) {
     '#default_value' => variable_get('gdrive_settings_clientsecret', ''),
     '#required' => TRUE,
   );
-  
+  /** Redirect URL is not needed. Just return to home page.
   $form['gdrive_settings_redirecturi'] = array(
     '#type' => 'textfield',
     '#title' => t('Redirect URL'),
     '#description' => t('The URL to which the user will be directed upon login. (Defaults to the home page.)'),
     '#size' => 80,
     '#default_value' => variable_get('gdrive_settings_redirecturi', ''),
-  );
+  ); */
    
   return system_settings_form($form);
 }
 
 /**
- * Implements hook_libraries_info().
+ * Implements hook_libraries_info(). Registers the google-api-php-client library
  */
 function gdrive_libraries_info() {
   $libraries['google-api-php-client'] = array(
@@ -151,7 +152,7 @@ function gdrive_libraries_info() {
 }
 
 /**
- * Returns a named array of Google API project info from administration settings
+ * Returns a named array of Google API project info from administration settings. Info used by Google API Client
  */
 function gdrive_get_google_auth_settings() {
   if(variable_get('gdrive_settings_clientid', '') == '') { return FALSE; }
@@ -164,29 +165,37 @@ function gdrive_get_google_auth_settings() {
 }
 
 /**
- * Implements hook_user_login
+ * Implements hook_user_login. When user logs in check the status of their google authorization and take appropriate action
  */
 function gdrive_user_login(&$edit, $account) {
   $uid = $account->uid;
   $hasCreds = gdrive_get_stored_credentials($uid);
+  // If user does not have any saved credentials, show message indicating that.
   if(!$hasCreds ) {
     drupal_set_message(t('You have not authorized access to your Google Drive account which is needed to create certain kinds of content such as visualizations. Please go <a href="@authlink">here</a> to authorize read-only access to your Google Drive account or hide this message.', array('@authlink' => url('gdrive/auth'))), 'warning');
   } else {
     $creds = json_decode($hasCreds);
+    // If user has revoked or denied access to Google account, then do nothing
     if(isset($creds->revoked) && $creds->revoked == TRUE) {
       return;
     }
     $url = gdrive_get_auth_url(gdrive_get_state());
+    // If there is no refresh token, it has been lost. So force reapproval through Google to get one.
     if(!isset($creds->refresh_token)) {
       $url = str_replace('approval_prompt=auto', 'approval_prompt=force', $url);
+      $_GET['destination'] = $url;
+      drupal_goto($url, array('external' => TRUE, 'absolute' => TRUE));
+    } else {
+      // Otherwise get new token by sending refresh token to Google.
+      $newcreds = gdrive_refresh_token($creds);
+      gdrive_store_credentials($uid, $newcreds);
     }
-    $_GET['destination'] = $url;
-    drupal_goto($url, array('external' => TRUE, 'absolute' => TRUE));
   }
 }
 
 /**
- * Implements hook_page_alter. Adds message to user's profile to tell whether they have authorized access to their Google Drive account.
+ * Implements hook_page_alter. Adds message to user's profile to tell whether they have authorized access to their 
+ *    Google Drive account.
  */
 function gdrive_page_alter(&$page) {
   // alters the user's profile page putting message that authorization has either been approved or disapproved.
@@ -232,7 +241,7 @@ function gdrive_get_state() {
 }
 
 /**
- * Authorization page for accessing user's Google Drive account. Used also for revoking or reinstating accesss.
+ * Authorization page for accessing user's Google Drive account. Called by /gdrive/auth Used also for revoking access.
  */
 function gdrive_auth_page($form, &$form_state) {
   global $user;
@@ -304,20 +313,24 @@ function gdrive_auth_page_validate($form, &$form_state) {
   
 }
 
+/**
+ * Function called by /gdrive/reauth/ for when user want to switch Google account associated with this site.
+ *    Deletes old authorization and gets new permission. User must be logged into the new Google account or do so while authorizing.
+ */
 function gdrive_auth_new_account() {
   global $user;
   $result = db_delete('gdrive_auth')
     ->condition('uid', $user->uid)
     ->execute();
-  if($result == 0) {
-    drupal_set_message(t('No previous authorization found.'));
-  }
   $state = gdrive_get_state();
   $authurl = gdrive_get_auth_url($state);
   $authurl = str_replace('approval_prompt=auto', 'approval_prompt=force', $authurl);
   drupal_goto($authurl, array('external' => TRUE));
 }
 
+/**
+ * Function called by return url from Google /gdrive/response. Gets credentials (token) from the one-time code and stores the token.
+ */
 function gdrive_register() {
   global $user;
   $pq = drupal_parse_url($_SERVER['REQUEST_URI']);
@@ -325,10 +338,12 @@ function gdrive_register() {
   $state = $pq['query']['state'];
   $credentials = gdrive_get_credentials($gcode, $state);
   gdrive_store_credentials($user->uid, $credentials);
-  $gauthredirect = variable_get('gdrive_settings_redirecturi', '');
-  drupal_goto($gauthredirect);
+  drupal_goto();
 }
 
+/**
+ * Function called by /gdrive/spreadsheets. Returns a simple list of Google Spreadsheets.
+ */
 function gdrive_show() {
   global $user; 
   drupal_set_title(t('Google Drive Spreadsheets'));

@@ -47,7 +47,7 @@ function gdrive_schema() {
 
 
 /**
- * Implements hook_install().
+ * Implements hook_install(). Sets administrator gdrive access settings to TRUE
  */
 function gdrive_install() {
   $role = user_role_load_by_name("administrator");
@@ -57,6 +57,9 @@ function gdrive_install() {
   drupal_set_message(t('Make sure the Google Project authentication credentials are properly entered in the <a href="@settingsurl">configuration page</a> for this module.', array('@settingsurl' => '/admin/config/services/gdrive')), 'warning');
 }
 
+/**
+ * Implements hook_enable. Test whether Google API PHP Client is properly installed
+ */
 function gdrive_enable() {
   $glibpath = libraries_get_path('google-api-php-client');
   if(!$glibpath) {
@@ -66,8 +69,11 @@ function gdrive_enable() {
   }
 }
 
+/**
+ * Implements hook_uninstall. Deletes settings variables.
+ */
 function gdrive_uninstall() {
   variable_del('gdrive_settings_clientid');
   variable_del('gdrive_settings_clientsecret');
-  variable_del('gdrive_settings_redirecturi');
+  //variable_del('gdrive_settings_redirecturi');
 }

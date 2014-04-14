@@ -50,12 +50,15 @@ class CodeExchangeException extends GetCredentialsException {}
  */
 class NoUserIdException extends Exception {}
 
+/**
+ * Returns a new php Client object based on sites Google console settings. 
+ */
 function gdrive_get_client($state='') {
   global $base_url;
   if($state == '') { $state = gdrive_get_state(); }
-  $appinfo =  gdrive_get_google_auth_settings();
+  $appinfo =  gdrive_get_google_auth_settings(); // Retrieve Google Console settings for this site. Set in administration page for module.
   $scopes = gdrive_get_scopes();
-  $client = new Google_Client();
+  $client = new Google_Client(); // Create new client and give it site specific info.
   $client->setClientId($appinfo['client']);
   $client->setClientSecret($appinfo['secret']);
   $client->setRedirectUri($base_url . url($appinfo['redirect']));
@@ -85,6 +88,9 @@ function gdrive_get_stored_credentials($uid) {
   }
 }
 
+/**
+ * When currently stored token is out of date, use the refresh token to get a new one and store that.
+ */
 function gdrive_refresh_token($creds) {
   $client = gdrive_get_client();
   $client->setAccessToken(json_encode($creds));
@@ -93,6 +99,10 @@ function gdrive_refresh_token($creds) {
   return $newtoken;
 }
 
+/**
+ * Revoke previously granted authorization
+ *   TODO: Check if this should delete record from database as well
+ */
 function gdrive_revoke_auth($uid) {
   $client = gdrive_get_client();
   $creds = json_decode(gdrive_get_stored_credentials($uid));
@@ -207,6 +217,14 @@ function gdrive_get_credentials($authorizationCode, $state) {
   throw new NoRefreshTokenException($authorizationUrl);
 }
 
+/**
+ * Returns a list of file API objects for spreadsheets in current user's account
+ * 
+ * @param String $sorted filed field to sort the list by. Defaults to title.
+ * 
+ * @return Array Named array of the following information for each file: gid, title, url, created, owners, shared.
+ * 
+ */
 function gdrive_get_filelist($sorted='title') {
   global $user;
   $client = gdrive_get_client();
@@ -216,7 +234,7 @@ function gdrive_get_filelist($sorted='title') {
     $client->setAccessToken($creds);
     $driveService = new Google_Service_Drive($client);
     $files = $driveService->files->listFiles(array(
-         'q' => 'mimeType=\'application/vnd.google-apps.spreadsheet\'', 
+         'q' => 'mimeType=\'application/vnd.google-apps.spreadsheet\'',  // filter out everything but spreadsheets
          'maxResults' => 10000
        ))->getItems();
     $newfiles = array();
@@ -244,6 +262,13 @@ function gdrive_get_filelist($sorted='title') {
   }
 }
 
+/**
+ * Returns a file object for a given Google ID
+ * 
+ * @params String $gid An alpha-numeric ID for the spreadsheet assigned by Google
+ * 
+ * @return Object File The php file object for that spreadsheet.
+ */
 function gdrive_get_file($gid) {
   // Returns a files resource: https://developers.google.com/drive/v2/reference/files#resource
   global $user;
@@ -271,10 +296,14 @@ function gdrive_get_file($gid) {
   }
 }
 
-function gdrive_is_authorized() {
+/**
+ * Function to determine if a given user has or has not authorized reading of their Google Drive account
+ */
+function gdrive_is_authorized($uid = FALSE) {
   global $user;
+  if(!$uid) { $uid = $user->uid; }
   $client = gdrive_get_client();
-  $creds = gdrive_get_stored_credentials($user->uid);
+  $creds = gdrive_get_stored_credentials($uid);
   $credobj = ($creds) ? json_decode($creds) : FALSE;
   if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
     return TRUE;
