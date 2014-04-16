@@ -239,14 +239,7 @@ function gdrive_get_filelist($sorted='title') {
        ))->getItems();
     $newfiles = array();
     foreach($files as $file) {
-      $farray = array(
-        'gid' => $file->getId(),
-        'title' => $file->getTitle(),
-        'url' => $file->getAlternateLink(),
-        'created' => $file->getCreatedDate(),
-        'owners' => implode('$', $file->getOwnerNames()),
-        'shared' => $file->getShared(),
-      );
+      $farray = gdrive_file_attributes($file);
       array_push($newfiles, $farray);
     }
     if($sorted == 'title') {
@@ -294,6 +287,30 @@ function gdrive_get_file($gid) {
       return FALSE;
     }
   }
+}
+
+/**
+ * Function that returns a set array of file attributes from a file object
+ */
+function gdrive_file_attributes($file) {
+  return array(
+    'gid' => $file->getId(),
+    'title' => $file->getTitle(),
+    'url' => $file->getAlternateLink(),
+    /** Unnecessary right now
+    'embedurl' => $file->getEmbedLink(),
+    'exportlinks' => $file->getExportLinks(),
+    'self' => $file->getSelfLink(),
+     **/
+    /* These all return empty strings:
+    'defaulturl' => $file->getDefaultOpenWithLink(),
+    'wcurl' => $file->getWebContentLink(),
+    'wvulr' => $file->getWebViewLink(),
+     */
+    'created' => $file->getCreatedDate(),
+    'owners' => implode('$', $file->getOwnerNames()),
+    'shared' => $file->getShared(),
+  );
 }
 
 /**
