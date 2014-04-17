@@ -19,7 +19,18 @@ function gdrive_init() {
   } 
   module_load_include('inc', 'gdrive', 'gdrive');
 }
-
+/**
+ * Implements hook_block_info.
+ * Creates a custom block with gdrive status to use on custom user pages
+ */
+function gdrive_block_info() {
+  $blocks = array();
+  $blocks['gdrive_info_block'] = array(
+   'info' => t('Google Drive Status Block'),
+  );
+  return $blocks;  
+}
+ 
 /**
  * Implements hook_menu
  */
@@ -194,33 +205,56 @@ function gdrive_user_login(&$edit, $account) {
 }
 
 /**
+* Implements hook_block_view(). Creates a block with GDrive status in it for adding to panelized User profiles or elsewhere
+*/
+function gdrive_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'gdrive_info_block':
+      $block['subject'] = '';
+      $block['content'] =array(
+        '#markup' => _gdrive_get_status(),
+      );
+      break;
+  }
+  return $block;
+}
+
+/**
  * Implements hook_page_alter. Adds message to user's profile to tell whether they have authorized access to their 
  *    Google Drive account.
  */
 function gdrive_page_alter(&$page) {
   // alters the user's profile page putting message that authorization has either been approved or disapproved.
-  global $user;
   if(isset($page['content']['system_main']['#entity_type'])) {
     if ($page['content']['system_main']['#entity_type'] == 'user') {
       if(isset($page['content']['system_main']['#account']) && $user->uid == $page['content']['system_main']['#account']->uid) {
-        $creds = gdrive_get_stored_credentials($user->uid);
-        $creds = json_decode($creds);
-        $msg = t('<p>You have authorized this site to read your Google Drive account. (<a href="@revokelink">Revoke authorization</a>)', array('@revokelink'=> url('gdrive/auth/revoke')));
-        if($creds) {
-          if(isset($creds->revoked) && $creds->revoked == TRUE) {
-            $msg = t('<p>You have denied this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
-          }
-        } else {
-          $msg = t('<p>You have not yet given this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
-        }
         $markup = array(
-              '#markup' => $msg, 
+              '#markup' => _gdrive_get_status(), 
               '#weight' => 40,
           );
         $page['content']['system_main']['gdrive_auth'] = $markup;
       }
     }
   }
+}
+
+/**
+ * Returns markup for User's Gdrive status
+ */
+function _gdrive_get_status() {
+  global $user;
+  $creds = gdrive_get_stored_credentials($user->uid);
+  $creds = json_decode($creds);
+  $msg = t('<p>You have authorized this site to read your Google Drive account. (<a href="@revokelink">Revoke authorization</a>)', array('@revokelink'=> url('gdrive/auth/revoke')));
+  if($creds) {
+    if(isset($creds->revoked) && $creds->revoked == TRUE) {
+      $msg = t('<p>You have denied this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
+    }
+  } else {
+    $msg = t('<p>You have not yet given this site read-only access to your Google Drive account. (<a href="@authlink">Authorize Now!</a>)', array('@authlink'=> url('gdrive/auth')));
+  }
+  return $msg;
 }
 
 /**
