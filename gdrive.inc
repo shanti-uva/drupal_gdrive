@@ -318,11 +318,12 @@ function gdrive_file_attributes($file) {
  */
 function gdrive_is_authorized($uid = FALSE) {
   global $user;
-  if(!$uid) { $uid = $user->uid; }
+	if (gdrive_offline_authorized()) { return TRUE; }
+  if (!$uid) { $uid = $user->uid; }
   $client = gdrive_get_client();
   $creds = gdrive_get_stored_credentials($uid);
   $credobj = ($creds) ? json_decode($creds) : FALSE;
-  if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
+  if ($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
     return TRUE;
   } else {
     return FALSE;

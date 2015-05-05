@@ -5,6 +5,7 @@ core = 7.x
 
 files[] = gdrive.module
 files[] = gdrive.inc
+files[] = gdrive.offline.inc
 
 dependencies[] = libraries
 

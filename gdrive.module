@@ -18,6 +18,7 @@ function gdrive_init() {
     libraries_load('google-api-php-client');
   } 
   module_load_include('inc', 'gdrive', 'gdrive');
+  module_load_include('inc', 'gdrive', 'gdrive.offline');
 }
 /**
  * Implements hook_block_info.
@@ -122,6 +123,15 @@ function gdrive_admin_settings($form, &$form_state) {
     '#default_value' => variable_get('gdrive_settings_clientsecret', ''),
     '#required' => TRUE,
   );
+	
+	
+  $form['gdrive_settings_localhost'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('This site is installed on a localhost'),
+    '#size' => 80,
+    '#default_value' => variable_get('gdrive_settings_localhost', 0),
+    '#required' => FALSE,
+  );
   /** Redirect URL is not needed. Just return to home page.
   $form['gdrive_settings_redirecturi'] = array(
     '#type' => 'textfield',
@@ -172,7 +182,7 @@ function gdrive_get_google_auth_settings() {
     'secret' => variable_get('gdrive_settings_clientsecret', ''),
     'redirect' => 'gdrive/response',
   );
-  return $info;
+  return $info;	
 }
 
 /**
@@ -325,11 +335,15 @@ function gdrive_auth_page($form, &$form_state) {
 function gdrive_auth_page_validate($form, &$form_state) {
   global $user;
   $response = $form_state['triggering_element']['#value'];
-  if($response == t('Yes')) {
-    $state = gdrive_get_state();
-    $authurl = gdrive_get_auth_url($state);
-    $authurl = str_replace('approval_prompt=auto', 'approval_prompt=force', $authurl);
-    drupal_goto($authurl, array('external' => TRUE));
+  if ($response == t('Yes')) {
+  	if (gdrive_is_offline()) {
+  		 gdrive_offline_validate(); 
+		} else {
+	    $state = gdrive_get_state();
+	    $authurl = gdrive_get_auth_url($state);
+	    $authurl = str_replace('approval_prompt=auto', 'approval_prompt=force', $authurl);
+	    drupal_goto($authurl, array('external' => TRUE));
+		}
   } else {
     $uid = $user->uid;
     gdrive_revoke_auth($uid);
@@ -344,7 +358,6 @@ function gdrive_auth_page_validate($form, &$form_state) {
     gdrive_store_credentials($uid, $credentials); 
     drupal_goto($form_state['input']['referrer']);
   }
-  
 }
 
 /**
@@ -369,7 +382,13 @@ function gdrive_register() {
   global $user;
   $pq = drupal_parse_url($_SERVER['REQUEST_URI']);
   $gcode = $pq['query']['code'];
-  $state = $pq['query']['state'];
+  $state = (isset($pq['query']['state'])) ? $pq['query']['state'] : 'login';
+	if (variable_get('gdrive_settings_localhost', 0) == TRUE) {
+		$info = array('gcode' => $gcode, 'state' => $state);
+		//dpm($info, 'registration info');
+		dgrive_offline_register($info);
+		drupal_goto();
+	}
   $credentials = gdrive_get_credentials($gcode, $state);
   gdrive_store_credentials($user->uid, $credentials);
   drupal_goto();
