@@ -98,7 +98,7 @@ function gdrive_offline_filelist() {
 		'protocol' => 'HTTP/1.1',
 		'method' => 'GET',
 		'headers' => array(
-			'Authorization' => "Bearer ya29.agFiURVhqL4pf_Ld7e5G-k-3t0A-JiotPYOJbI8Zc0-hzwvOlUiw3YioYBiagBfHu_BJ820LGXrpEA",
+			'Authorization' => "Bearer ya29.awFiXhxOUl0HNOxDz74-En2fr8FTGwY74heiCHKZMV_MfkHEvpx6e2iklWAxAFp_hS8CXtTNLgyP7w",
 			'Content-length' => 0,
 			'User-Agent' => '',
 		 ),
