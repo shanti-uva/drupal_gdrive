@@ -263,30 +263,32 @@ function gdrive_get_filelist($sorted='title') {
  * 
  * @return Object File The php file object for that spreadsheet.
  */
-function gdrive_get_file($gid) {
+function gdrive_get_file($gid, $format='array') {
   // Returns a files resource: https://developers.google.com/drive/v2/reference/files#resource
   global $user;
+	if (gdrive_is_offline()) {return gdrive_offline_get_file($gid); }
   $client = gdrive_get_client();
   $creds = gdrive_get_stored_credentials($user->uid);
   $credobj = ($creds) ? json_decode($creds) : FALSE;
-  if($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
+  if ($credobj && (!isset($credobj->revoked) || $credobj->revoked != TRUE)) {
     $client->setAccessToken($creds);
     $driveService = new Google_Service_Drive($client);
-    if(strpos($gid, '?key=') > -1) {
+    if (strpos($gid, '?key=') > -1) {
       $pts = explode('?key=', $gid);
-      if(isset($pts[1])) {
+      if (isset($pts[1])) {
         $gid = $pts[1];
-        if(preg_match('/([^\&\#]+)[\&\#]/', $gid, $matches)) {
+        if (preg_match('/([^\&\#]+)[\&\#]/', $gid, $matches)) {
           $gid = $matches[1];
         }
       }
     }
     try { 
       $file = $driveService->files->get($gid);
-      return $file;
+			if ($format == 'object') { return $file; }
+      return (array)$file;
     } catch (Google_Service_Exception $gse) {
       return FALSE;
-    }
+    }	
   }
 }
 
