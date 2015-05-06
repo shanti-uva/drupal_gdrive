@@ -1,6 +1,8 @@
 <?php
 /**
  * Get user permission to access Gdrive from desktop app, localhost install
+ * 
+ * See https://developers.google.com/identity/protocols/OAuth2InstalledApp for how this all works
  */
  
  /**
@@ -13,6 +15,17 @@
 	return $offline;
  }
  
+/**
+ * Checks to see if offline is authorized
+ * 
+ * Returns TRUE if authorized
+ */
+function gdrive_offline_authorized() {
+	$token = variable_get('gdrive_local_token', FALSE);
+	$auth = (gdrive_is_offline() && !empty($token)) ? TRUE : FALSE;
+	return $auth;
+}
+
  /**
   * Called from gdrive_auth_page_validate()
   * For registering offline site with Gdrive
@@ -39,6 +52,13 @@ function gdrive_offline_validate() {
 
 /**
  * Called from gdrive_register() with info['code'] and info['state']
+ * 
+ * Sets variable 'gdrive_local_token' as json text with following fields:
+ * 			"access_token"
+ * 			"token_type"
+ * 			"expires_in"	
+ * 			"refresh_token"
+ * 			"id_token":
  */
 function dgrive_offline_register($info) {
 	$gsettings = gdrive_get_google_auth_settings();
@@ -61,8 +81,56 @@ function dgrive_offline_register($info) {
 	variable_set('gdrive_local_token', $result->data);
 }
 
-function gdrive_offline_authorized() {
-	$token = variable_get('gdrive_local_token', FALSE);
-	$auth = (gdrive_is_offline() && !empty($token)) ? TRUE : FALSE;
-	return $auth;
+function gdrive_offline_filelist() {
+	
+	// Check out https://developers.google.com/oauthplayground/
+	// Access token: ya29.agFiURVhqL4pf_Ld7e5G-k-3t0A-JiotPYOJbI8Zc0-hzwvOlUiw3YioYBiagBfHu_BJ820LGXrpEA
+
+	if (!gdrive_offline_authorized()) {return array(); } // Return empty array if not authorized
+	$token = json_decode(variable_get('gdrive_local_token'));
+	$url = 'https://www.googleapis.com/drive/v2/files';
+	$token = json_decode(variable_get('gdrive_local_token'));
+	$data = array(
+	  'access_token' => $token->access_token,
+	);
+	
+	$options = array(
+		'protocol' => 'HTTP/1.1',
+		'method' => 'GET',
+		'headers' => array(
+			'Authorization' => "Bearer ya29.agFiURVhqL4pf_Ld7e5G-k-3t0A-JiotPYOJbI8Zc0-hzwvOlUiw3YioYBiagBfHu_BJ820LGXrpEA",
+			'Content-length' => 0,
+			'User-Agent' => '',
+		 ),
+	);
+
+	$results = drupal_http_request($url, $options);
+	$jdata = $results->data;
+	$json = json_decode($jdata);
+	$ss = array();
+	foreach($json->items as $n => $item) {
+		if (strpos($item->mimeType, 'spreadsheet') > -1) {
+			$item = (array)$item;
+			$item['gid'] = $item['id'];
+			$item['url'] = $item['alternateLink'];
+			$ss[$n] = $item;
+		}
+	}
+	return $ss;
+	
+	/// Doesn't Work
+	$url = 'https://www.googleapis.com/drive/v2/files';
+	$token = json_decode(variable_get('gdrive_local_token'));
+	$data = array(
+	  'access_token' => $token->access_token,
+	);
+	
+	$options = array(
+	  'method' => 'GET',
+	  'data' => drupal_http_build_query($data),
+	  'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+	);
+	
+	$result = drupal_http_request($url, $options);
+	return $result;
 }

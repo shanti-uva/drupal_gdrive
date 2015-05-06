@@ -227,6 +227,7 @@ function gdrive_get_credentials($authorizationCode, $state) {
  */
 function gdrive_get_filelist($sorted='title') {
   global $user;
+	if(gdrive_is_offline()) {return gdrive_offline_filelist(); }
   $client = gdrive_get_client();
   $creds = gdrive_get_stored_credentials($user->uid);
   $credobj = ($creds) ? json_decode($creds) : FALSE;
