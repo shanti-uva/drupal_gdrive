@@ -296,6 +296,7 @@ function gdrive_get_file($gid, $format='array') {
  * Function that returns a set array of file attributes from a file object
  */
 function gdrive_file_attributes($file) {
+	if(gdrive_is_offline()) {return $file; }
   return array(
     'gid' => $file->getId(),
     'title' => $file->getTitle(),
