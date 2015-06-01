@@ -6,6 +6,16 @@
  */
  
  /**
+  * For using on localhost "offline"
+  * 
+  * Go to https://developers.google.com/oauthplayground
+  * Authorize GDrive readonly and exchange for code
+  * Paste code as gdauthcode below 
+  */
+ global $gdauthcode;
+ $gdauthcode = 'ya29.gAEWXMVBIfoyYvaVF9_7B1REgiwu5yTJZFR8iofRBF9ilKAXA4CZdKCkdx-mNnD0Ucgk7PaxoxbM8Q';
+ 
+ /**
   * Checks to see if the site is a localhost/offline site
   * 
   * Returns TRUE if offline
@@ -82,7 +92,7 @@ function dgrive_offline_register($info) {
 }
 
 function gdrive_offline_filelist($gid=FALSE, $format='array') {
-	
+	global $gdauthcode;
 	// Check out https://developers.google.com/oauthplayground/
 	// Access token: ya29.agFiURVhqL4pf_Ld7e5G-k-3t0A-JiotPYOJbI8Zc0-hzwvOlUiw3YioYBiagBfHu_BJ820LGXrpEA
 
@@ -96,12 +106,11 @@ function gdrive_offline_filelist($gid=FALSE, $format='array') {
 	$data = array(
 	  'access_token' => $token->access_token,
 	);
-	
 	$options = array(
 		'protocol' => 'HTTP/1.1',
 		'method' => 'GET',
 		'headers' => array(
-			'Authorization' => "Bearer ya29.bAGnXayVShVGLau3BHELdwpT7ACLW9KY3dBbCjNCCRep3caNPozvwQGwmSg25j_tuaTM8Z1_hahJVw",
+			'Authorization' => "Bearer {$gdauthcode}",
 			'Content-length' => 0,
 			'User-Agent' => '',
 		 ),
