@@ -207,9 +207,13 @@ function gdrive_user_login(&$edit, $account) {
       $_GET['destination'] = $url;
       drupal_goto($url, array('external' => TRUE, 'absolute' => TRUE));
     } else {
-      // Otherwise get new token by sending refresh token to Google.
-      $newcreds = gdrive_refresh_token($creds);
-      gdrive_store_credentials($uid, $newcreds);
+    	// Otherwise get new token by sending refresh token to Google.
+      try { 
+	      $newcreds = gdrive_refresh_token($creds);
+	      gdrive_store_credentials($uid, $newcreds);
+			} catch (Exception $e) {
+				drupal_set_message("There was a problem authenticating your GDrive accound: " . $e->getMessage(), 'warning');
+			}
     }
   }
 }
