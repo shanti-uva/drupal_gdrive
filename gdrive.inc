@@ -92,11 +92,15 @@ function gdrive_get_stored_credentials($uid) {
  * When currently stored token is out of date, use the refresh token to get a new one and store that.
  */
 function gdrive_refresh_token($creds) {
-  $client = gdrive_get_client();
-  $client->setAccessToken(json_encode($creds));
-  $client->refreshToken($creds->refresh_token);
-  $newtoken = $client->getAccessToken();
-  return $newtoken;
+	try {
+	  $client = gdrive_get_client();
+	  $client->setAccessToken(json_encode($creds)); 
+	  $client->refreshToken($creds->refresh_token);
+	  $newtoken = $client->getAccessToken();
+	  return $newtoken;
+	} catch (Google_Auth_Exception $ge) {
+    return false;
+	}
 }
 
 /**
