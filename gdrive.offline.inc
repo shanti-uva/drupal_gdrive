@@ -13,7 +13,7 @@
   * Paste code as gdauthcode below 
   */
  global $gdauthcode;
- $gdauthcode = 'ya29.hwH4qojUoOokyjFUZGNVBVmYTaKRFHRWsVjIzcguEEBpL61l4H1dSQENRJ9QvKCamVtmoiiciWAiiQ';
+ $gdauthcode = 'ya29.swGXWS5Uh4rqvZFo1NHMUDuB9dmhNgjqY_JpTKXBCKMK-r56rseGilk8UU4USKNuvg-Z';
  
  /**
   * Checks to see if the site is a localhost/offline site
