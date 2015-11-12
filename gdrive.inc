@@ -89,7 +89,7 @@ function gdrive_get_client($state = '') {
  */
 function gdrive_get_stored_credentials($uid) {
 	if ($_SERVER['HTTP_HOST'] == 'shivamanager.dev' || $_SERVER['HTTP_HOST'] == 'localhost') {
-		$custom_token = 'ya29.KQLEbcLb-t60NwYjDSeGJwZgSMWZ5sg9w6XJQp-VoDw5G40xoGheC1sEYItrNjSWTms_';
+		$custom_token = 'ya29.KgK-yyp3coaNp_rqNMIaf4fP1q0CWeaN3nEz36aMqZONP5C9ihmcRBZ84p7QhwY69zAd';
 		return '{"access_token":"' . $custom_token . '",
 					"token_type":"Bearer",
 					"expires_in":3600,
