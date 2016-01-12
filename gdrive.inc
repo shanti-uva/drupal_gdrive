@@ -89,12 +89,13 @@ function gdrive_get_client($state = '') {
  */
 function gdrive_get_stored_credentials($uid) {
 	if ($_SERVER['HTTP_HOST'] == 'shivamanager.dev' || $_SERVER['HTTP_HOST'] == 'localhost') {
-		$custom_token = 'ya29.KgK-yyp3coaNp_rqNMIaf4fP1q0CWeaN3nEz36aMqZONP5C9ihmcRBZ84p7QhwY69zAd';
+		$custom_token = 'ya29.ZwJWD_6vsTQPd-ng_XJieEH0JbK_mP3UcJCXTrienhcCHdXHsx0A7YT37c6oaVDOCJFl';
+        $refresh_token = ''; 
 		return '{"access_token":"' . $custom_token . '",
 					"token_type":"Bearer",
 					"expires_in":3600,
-					"refresh_token":"",
-					"created":1447270703}';
+					"refresh_token":"' . $refresh_token . '",
+					"created":' . time() . '}';
 	}
 	$query = db_select('gdrive_auth', 'sga');
 	$query -> condition('sga.uid', $uid, '=');
