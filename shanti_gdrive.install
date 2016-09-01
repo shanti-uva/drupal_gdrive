@@ -7,7 +7,7 @@
 /**
  * Implements hook_schema
  */
-function gdrive_schema() {
+function shanti_gdrive_schema() {
   $schema['gdrive_auth'] = array(
     // Example (partial) specification for table "node".
     'description' => 'The table for Shanti@UVa Google Drive module authentication.',
@@ -49,7 +49,7 @@ function gdrive_schema() {
 /**
  * Implements hook_install(). Sets administrator gdrive access settings to TRUE
  */
-function gdrive_install() {
+function shanti_gdrive_install() {
   $role = user_role_load_by_name("administrator");
   if($role) {
     user_role_change_permissions($role->rid, array('access gdrive settings' => TRUE));
@@ -60,10 +60,10 @@ function gdrive_install() {
 /**
  * Implements hook_enable. Test whether Google API PHP Client is properly installed
  */
-function gdrive_enable() {
+function shanti_gdrive_enable() {
   $glibpath = libraries_get_path('google-api-php-client');
   if(!$glibpath) {
-    drupal_set_message(t('You have not properly installed the Google Api PHP Client. It should be in the /sites/all/libraries directory. See the <a href="@rmlink" target="_blank">Read Me file</a> for the gdrive module for more information.', array('@rmlink' => url(drupal_get_path('module','gdrive') . '/README.md'))), 'warning');
+    drupal_set_message(t('You have not properly installed the Google Api PHP Client. It should be in the /sites/all/libraries directory. See the <a href="@rmlink" target="_blank">Read Me file</a> for the gdrive module for more information.', array('@rmlink' => url(drupal_get_path('module','shanti_gdrive') . '/README.md'))), 'warning');
   } else {
     drupal_set_message(t('The Google Api PHP Client is properly installed.'));
   }
@@ -72,7 +72,7 @@ function gdrive_enable() {
 /**
  * Implements hook_uninstall. Deletes settings variables.
  */
-function gdrive_uninstall() {
+function shanti_gdrive_uninstall() {
   variable_del('gdrive_settings_clientid');
   variable_del('gdrive_settings_clientsecret');
   //variable_del('gdrive_settings_redirecturi');
